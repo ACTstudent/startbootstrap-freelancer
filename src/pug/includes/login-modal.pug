@@ -1,0 +1,37 @@
+// Login Modal
+#loginModal.auth-modal.modal.fade(tabindex='-1', aria-labelledby='loginModalLabel', aria-hidden='true')
+    .modal-dialog.modal-dialog-centered
+        .modal-content
+            .modal-header
+                h4#loginModalLabel.modal-title.text-uppercase.fw-bold.mb-0
+                    i.fas.fa-key.me-2
+                    | Sign In
+                button.btn-close(type='button', data-bs-dismiss='modal', aria-label='Close')
+            .modal-body
+                .alert.alert-danger.d-none#loginErrorAlert
+                
+                form#loginForm(onsubmit='return false;')
+                    .mb-3
+                        label.form-label.fw-bold(for='loginUsername') Username
+                        .input-group
+                            span.input-group-text
+                                i.fas.fa-user
+                            input#loginUsername.form-control(type='text', placeholder='Enter your username...', required)
+                    
+                    .mb-4
+                        label.form-label.fw-bold(for='loginPassword') Password
+                        .input-group
+                            span.input-group-text
+                                i.fas.fa-lock
+                            input#loginPassword.form-control(type='password', placeholder='Enter your password...', required)
+                            button#loginTogglePassword.btn.btn-outline-secondary(type='button')
+                                i.fas.fa-eye
+                    
+                    .d-grid
+                        button.btn.btn-primary.btn-xl.fw-bold(type='submit')
+                            i.fas.fa-right-to-bracket.me-2
+                            | Login
+                            
+                .text-center.mt-4
+                    span.text-muted Don't have an account? 
+                    a#linkToRegister.fw-bold.text-primary(href='#') Register here
