@@ -17,9 +17,23 @@
                         .input-group
                             span.input-group-text
                                 i.fas.fa-user
-                            input#registerUsername.form-control(type='text', placeholder='Enter a username...', required)
+                            input#registerUsername.form-control(type='text', placeholder='Choose a username...', required)
                     
                     .mb-3
+                        label.form-label.fw-bold(for='registerEmail') Email Address
+                        .input-group
+                            span.input-group-text
+                                i.fas.fa-envelope
+                            input#registerEmail.form-control(type='email', placeholder='Enter your email...', required)
+                    
+                    .mb-3
+                        label.form-label.fw-bold(for='registerBirthday') Birthday
+                        .input-group
+                            span.input-group-text
+                                i.fas.fa-calendar
+                            input#registerBirthday.form-control(type='date', required)
+
+                    .mb-4
                         label.form-label.fw-bold(for='registerPassword') Password
                         .input-group
                             span.input-group-text
@@ -27,8 +41,6 @@
                             input#registerPassword.form-control(type='password', placeholder='Choose a secure password...', required)
                             button#registerTogglePassword.btn.btn-outline-secondary(type='button')
                                 i.fas.fa-eye
-                    
-
                     
                     .d-grid
                         button.btn.btn-primary.btn-xl.fw-bold(type='submit')

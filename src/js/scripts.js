@@ -187,14 +187,18 @@ window.addEventListener('DOMContentLoaded', event => {
             if (registerSuccessAlert) registerSuccessAlert.classList.add('d-none');
             
             const usernameInput = document.getElementById('registerUsername');
+            const emailInput = document.getElementById('registerEmail');
+            const birthdayInput = document.getElementById('registerBirthday');
             const passwordInput = document.getElementById('registerPassword');
             
             const username = usernameInput ? usernameInput.value.trim() : '';
+            const email = emailInput ? emailInput.value.trim() : '';
+            const birthday = birthdayInput ? birthdayInput.value : '';
             const password = passwordInput ? passwordInput.value.trim() : '';
             
-            if (!username || !password) {
+            if (!username || !email || !password) {
                 if (registerErrorAlert) {
-                    registerErrorAlert.innerText = "Please fill in all fields.";
+                    registerErrorAlert.innerText = "Please fill in all required fields.";
                     registerErrorAlert.classList.remove('d-none');
                 }
                 return;
@@ -204,7 +208,7 @@ window.addEventListener('DOMContentLoaded', event => {
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, role_id })
+                    body: JSON.stringify({ username, email, birthday, password })
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -213,8 +217,6 @@ window.addEventListener('DOMContentLoaded', event => {
                         registerSuccessAlert.classList.remove('d-none');
                     }
                     registerForm.reset();
-                    
-
                     
                     // Automatically redirect to login modal after 1.5 seconds
                     setTimeout(() => {

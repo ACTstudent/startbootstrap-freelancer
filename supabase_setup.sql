@@ -1,52 +1,39 @@
--- Supabase Database Schema Setup Script
+-- Supabase Database Schema Setup Script (Updated - No Roles)
 -- Paste this script into the Supabase SQL Editor (Dashboard -> SQL Editor -> New Query) and run it.
 
--- 1. Create the Role table
-CREATE TABLE IF NOT EXISTS public."Role" (
-    role_id INT PRIMARY KEY,
-    role VARCHAR(50) NOT NULL UNIQUE
-);
-
--- 2. Populate standard roles
-INSERT INTO public."Role" (role_id, role) VALUES 
-(1, 'Admin'),
-(2, 'Teacher'),
-(3, 'Student')
-ON CONFLICT (role_id) DO NOTHING;
-
--- 3. Create a public profiles table that links to Supabase's private Auth users
+-- 1. Create a public profiles table that links to Supabase's private Auth users
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
-    role_id INT REFERENCES public."Role"(role_id) DEFAULT 3,
+    birthday DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 4. Enable Row Level Security (RLS) on public tables (recommended)
-ALTER TABLE public."Role" ENABLE ROW LEVEL SECURITY;
+-- 2. Enable Row Level Security (RLS) on profiles table (recommended)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- 5. Create RLS Policies
--- Allow anyone to read roles
-CREATE POLICY "Allow public read access to roles" 
-    ON public."Role" FOR SELECT USING (true);
-
--- Allow users to read all profiles, but only update their own
+-- 3. Create RLS Policies
+-- Allow users to read all profiles
 CREATE POLICY "Allow public read access to profiles" 
     ON public.profiles FOR SELECT USING (true);
 
+-- Allow users to insert and update only their own profile
 CREATE POLICY "Allow individual write access to profiles" 
     ON public.profiles FOR ALL USING (auth.uid() = id);
 
--- 6. Trigger: Automatically insert a profile record when a new user signs up
+-- 4. Trigger: Automatically insert a profile record when a new user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, username, role_id)
+    INSERT INTO public.profiles (id, username, birthday)
     VALUES (
         new.id,
         COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-        3 -- Default role: Student
+        CASE 
+            WHEN new.raw_user_meta_data->>'birthday' IS NOT NULL 
+            THEN (new.raw_user_meta_data->>'birthday')::DATE
+            ELSE NULL
+        END
     );
     RETURN NEW;
 END;

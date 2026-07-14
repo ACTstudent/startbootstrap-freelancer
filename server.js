@@ -47,7 +47,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
-        // Supabase sign-in requires an email. If the user provided a plain username, map to a dummy email.
+        // username field may be an email address
         const email = username.includes('@') ? username : `${username}@example.com`;
 
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -56,13 +56,20 @@ app.post('/api/login', async (req, res) => {
         });
 
         if (error) {
-            return res.status(401).json({ success: false, message: error.message });
+            return res.status(401).json({ success: false, message: "Invalid username or password." });
         }
+
+        // Fetch profile to get username
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, birthday')
+            .eq('id', data.user.id)
+            .single();
 
         // Store user in session
         req.session.user = {
             id: data.user.id,
-            username: username.trim(),
+            username: (profile && profile.username) ? profile.username : username.trim(),
             email: data.user.email
         };
 
@@ -75,19 +82,22 @@ app.post('/api/login', async (req, res) => {
 
 // Register route
 app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, email, password, birthday } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ success: false, message: "Username and password are required." });
+    if (!username || !email || !password) {
+        return res.status(400).json({ success: false, message: "Username, email, and password are required." });
     }
 
     try {
-        // Map plain username to email format for Supabase sign up compatibility
-        const email = username.includes('@') ? username : `${username}@example.com`;
-
         const { data, error } = await supabase.auth.signUp({
             email: email,
-            password: password
+            password: password,
+            options: {
+                data: {
+                    username: username,
+                    birthday: birthday || null
+                }
+            }
         });
 
         if (error) {
