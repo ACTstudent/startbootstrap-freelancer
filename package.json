@@ -38,8 +38,10 @@
         "url": "https://github.com/StartBootstrap/startbootstrap-freelancer.git"
     },
     "dependencies": {
+        "@supabase/supabase-js": "^2.110.4",
         "bootstrap": "5.2.3",
         "cookie-parser": "^1.4.7",
+        "dotenv": "^17.4.2",
         "express": "^5.2.1",
         "express-session": "^1.19.0",
         "msnodesqlv8": "^5.2.1",

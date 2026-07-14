@@ -1,26 +1,17 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const sql = require('msnodesqlv8');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const connectionString = "server=LAB2-PC28\\LAB3PC44;Database=SIS;Trusted_Connection=Yes;Driver={ODBC Driver 17 for SQL Server}";
-
-// Database helper using Promises
-function queryDb(query, params = []) {
-    return new Promise((resolve, reject) => {
-        sql.query(connectionString, query, params, (err, rows) => {
-            if (err) {
-                console.error("Database query error:", err);
-                return reject(err);
-            }
-            resolve(rows);
-        });
-    });
-}
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project-id.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Middleware
 app.use(express.json());
@@ -56,35 +47,28 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
-        const query = `
-            SELECT u.user_id, u.username, u.password_hash, u.role_id, r.role 
-            FROM user_login u 
-            INNER JOIN Role r ON u.role_id = r.role_id 
-            WHERE u.username = ?
-        `;
-        const rows = await queryDb(query, [username]);
-        
-        if (rows.length === 0) {
-            return res.status(401).json({ success: false, message: "Invalid username or password." });
-        }
+        // Supabase sign-in requires an email. If the user provided a plain username, map to a dummy email.
+        const email = username.includes('@') ? username : `${username}@example.com`;
 
-        const user = rows[0];
-        
-        // Plaintext comparison as per existing database passwords (e.g. admin123, louisse123)
-        if (user.password_hash !== password) {
-            return res.status(401).json({ success: false, message: "Invalid username or password." });
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (error) {
+            return res.status(401).json({ success: false, message: error.message });
         }
 
         // Store user in session
         req.session.user = {
-            id: user.user_id,
-            username: user.username.trim(),
-            role_id: user.role_id,
-            role: user.role.trim()
+            id: data.user.id,
+            username: username.trim(),
+            email: data.user.email
         };
 
         res.json({ success: true, user: req.session.user });
     } catch (err) {
+        console.error("Login exception:", err);
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 });
@@ -92,38 +76,40 @@ app.post('/api/login', async (req, res) => {
 // Register route
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
-    const role_id = 3; // Default to Student (role_id: 3)
 
     if (!username || !password) {
         return res.status(400).json({ success: false, message: "Username and password are required." });
     }
 
     try {
-        // Check if username already exists
-        const checkUserQuery = "SELECT 1 FROM user_login WHERE username = ?";
-        const checkRows = await queryDb(checkUserQuery, [username]);
-        
-        if (checkRows.length > 0) {
-            return res.status(400).json({ success: false, message: "Username is already taken." });
+        // Map plain username to email format for Supabase sign up compatibility
+        const email = username.includes('@') ? username : `${username}@example.com`;
+
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: password
+        });
+
+        if (error) {
+            return res.status(400).json({ success: false, message: error.message });
         }
 
-        // Get the next user_id (not auto-incrementing in DB)
-        const idQuery = "SELECT ISNULL(MAX(user_id), 0) + 1 AS next_id FROM user_login";
-        const idRows = await queryDb(idQuery);
-        const nextId = idRows[0].next_id;
-
-        // Insert new user
-        const insertQuery = "INSERT INTO user_login (user_id, username, password_hash, role_id) VALUES (?, ?, ?, ?)";
-        await queryDb(insertQuery, [nextId, username, password, role_id]);
-
-        res.status(201).json({ success: true, message: "Registration successful!" });
+        res.status(201).json({ success: true, message: "Registration successful! You can now log in." });
     } catch (err) {
+        console.error("Registration exception:", err);
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 });
 
 // Logout route
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
+    try {
+        // Also sign out from Supabase auth instance
+        await supabase.auth.signOut();
+    } catch (err) {
+        console.error("Supabase signOut error:", err);
+    }
+
     req.session.destroy(err => {
         if (err) {
             return res.status(500).json({ success: false, message: "Could not log out." });
