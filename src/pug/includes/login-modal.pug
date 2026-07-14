@@ -12,11 +12,11 @@
                 
                 form#loginForm(onsubmit='return false;')
                     .mb-3
-                        label.form-label.fw-bold(for='loginUsername') Username
+                        label.form-label.fw-bold(for='loginUsername') Email Address
                         .input-group
                             span.input-group-text
-                                i.fas.fa-user
-                            input#loginUsername.form-control(type='text', placeholder='Enter your username...', required)
+                                i.fas.fa-envelope
+                            input#loginUsername.form-control(type='email', placeholder='Enter your email...', required)
                     
                     .mb-4
                         label.form-label.fw-bold(for='loginPassword') Password
