@@ -176,60 +176,58 @@ window.addEventListener('DOMContentLoaded', event => {
         });
     }
 
-    // Handle Register submission (With alert confirmation and absolutely NO refresh)
-    $('#registerForm').off('submit').on('submit', function (e) {
-        e.preventDefault(); // Prevents default browser submit refresh
-        var $form = $(this);
+    // Handle Register submission (Vanilla JS - Resilient Selectors & No Auto Sign-in/No Refresh)
+    const registerForm = document.getElementById('registerForm') || document.querySelector('#registerModal form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async function (e) {
+            e.preventDefault(); // Absolutely stops form refresh
 
-        // 1. Grab values from input fields safely
-        var usernameVal = $form.find('input[name*="username" i], input[id*="username" i]').val() || '';
-        var emailVal = $form.find('input[name*="email" i], input[id*="email" i]').val() || '';
-        var birthdayVal = $form.find('input[name*="birthday" i], input[id*="birthday" i]').val() || '';
+            // 1. Grab inputs by searching field types (highly resilient fallback)
+            const usernameInput = registerForm.querySelector('input[type="text"]') || registerForm.querySelector('[id*="username" i]');
+            const emailInput = registerForm.querySelector('input[type="email"]') || registerForm.querySelector('[id*="email" i]');
+            const birthdayInput = registerForm.querySelector('input[type="date"]') || registerForm.querySelector('[id*="birthday" i]');
 
-        // Fallback check in case names/IDs differ
-        if (!usernameVal || !emailVal || !birthdayVal) {
-            var formDataArray = $form.serializeArray();
-            $.each(formDataArray, function(i, field) {
-                var nameLower = field.name.toLowerCase();
-                if (nameLower.includes('username')) usernameVal = field.value;
-                if (nameLower.includes('email')) emailVal = field.value;
-                if (nameLower.includes('birthday')) birthdayVal = field.value;
-            });
-        }
+            const usernameVal = usernameInput ? usernameInput.value.trim() : '';
+            const emailVal = emailInput ? emailInput.value.trim() : '';
+            const birthdayVal = birthdayInput ? birthdayInput.value.trim() : '';
 
-        // 2. Alert the user first to let them see their credentials
-        var confirmMessage = "Please confirm your credentials:\n\n" +
-                             "Username: " + (usernameVal || "Not entered") + "\n" +
-                             "Email: " + (emailVal || "Not entered") + "\n" +
-                             "Birthday: " + (birthdayVal || "Not entered") + "\n\n" +
-                             "Click OK to submit registration.";
-        
-        alert(confirmMessage);
+            // 2. Alert the credentials first
+            const alertMessage = 
+                `Please confirm your credentials:\n\n` +
+                `Username: ${usernameVal || 'Not entered'}\n` +
+                `Email: ${emailVal || 'Not entered'}\n` +
+                `Birthday: ${birthdayVal || 'Not entered'}\n\n` +
+                `Click OK to submit registration.`;
 
-        // 3. Make the background AJAX post registration call
-        $.ajax({
-            url: '/api/register', 
-            type: 'POST',
-            data: $form.serialize(), 
-            success: function (response) {
-                // Clear the form fields
-                $form[0].reset();
+            alert(alertMessage);
 
-                // Close the register modal gracefully
-                const registerEl = document.getElementById('registerModal');
-                const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
-                registerModal.hide();
-                
-                // Show success message without logging in or refreshing
-                alert("Account created successfully! You can now log in."); 
-            },
-            error: function (xhr, status, error) {
-                alert("An error occurred: " + error);
+            // 3. Perform background fetch registration (no page reload)
+            try {
+                const formData = new FormData(registerForm);
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData) // Match traditional form post serialization
+                });
+
+                if (response.ok) {
+                    // Clear fields
+                    registerForm.reset();
+
+                    // Close registration modal
+                    const registerEl = document.getElementById('registerModal');
+                    const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
+                    registerModal.hide();
+
+                    // Alert success
+                    alert("Account created successfully! You can now log in.");
+                } else {
+                    alert("Registration failed. Please check your inputs.");
+                }
+            } catch (err) {
+                alert("An error occurred during registration: " + err.message);
             }
         });
-
-        return false; // Hard stop wrapper to ensure absolutely no form submit refresh happens
-    });
+    }
 
     // Handle Logout
     const btnLogout = document.getElementById('btnLogout');
