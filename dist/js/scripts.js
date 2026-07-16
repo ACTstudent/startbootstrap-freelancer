@@ -176,13 +176,13 @@ window.addEventListener('DOMContentLoaded', event => {
         });
     }
 
-    // Handle Register submission (Vanilla JS - Resilient Selectors & No Auto Sign-in/No Refresh)
+    // Handle Register submission (Resilient Pure Vanilla JS & Blocks execution with Confirm)
     const registerForm = document.getElementById('registerForm') || document.querySelector('#registerModal form');
     if (registerForm) {
         registerForm.addEventListener('submit', async function (e) {
-            e.preventDefault(); // Absolutely stops form refresh
+            e.preventDefault(); // Immediately stops any form reloads or submissions
 
-            // 1. Grab inputs by searching field types (highly resilient fallback)
+            // 1. Grab inputs safely by looking at field types
             const usernameInput = registerForm.querySelector('input[type="text"]') || registerForm.querySelector('[id*="username" i]');
             const emailInput = registerForm.querySelector('input[type="email"]') || registerForm.querySelector('[id*="email" i]');
             const birthdayInput = registerForm.querySelector('input[type="date"]') || registerForm.querySelector('[id*="birthday" i]');
@@ -191,26 +191,32 @@ window.addEventListener('DOMContentLoaded', event => {
             const emailVal = emailInput ? emailInput.value.trim() : '';
             const birthdayVal = birthdayInput ? birthdayInput.value.trim() : '';
 
-            // 2. Alert the credentials first
-            const alertMessage = 
-                `Please confirm your credentials:\n\n` +
+            // 2. Format popup verification details
+            const confirmMessage = 
+                `Please confirm your registration details:\n\n` +
                 `Username: ${usernameVal || 'Not entered'}\n` +
                 `Email: ${emailVal || 'Not entered'}\n` +
                 `Birthday: ${birthdayVal || 'Not entered'}\n\n` +
-                `Click OK to submit registration.`;
+                `Click OK to register, or Cancel to edit your details.`;
 
-            alert(alertMessage);
+            // 3. Force stop with window.confirm()
+            const userConfirmed = window.confirm(confirmMessage);
+            if (!userConfirmed) {
+                // If they click "Cancel", stop right here so they can edit
+                return;
+            }
 
-            // 3. Perform background fetch registration (no page reload)
+            // 4. Send background POST request only after they clicked "OK"
             try {
                 const formData = new FormData(registerForm);
                 const response = await fetch('/api/register', {
                     method: 'POST',
-                    body: new URLSearchParams(formData) // Match traditional form post serialization
+                    body: new URLSearchParams(formData)
                 });
 
-                if (response.ok) {
-                    // Clear fields
+                const data = await response.json();
+
+                if (response.ok && data.success) {
                     registerForm.reset();
 
                     // Close registration modal
@@ -218,10 +224,16 @@ window.addEventListener('DOMContentLoaded', event => {
                     const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
                     registerModal.hide();
 
-                    // Alert success
                     alert("Account created successfully! You can now log in.");
                 } else {
-                    alert("Registration failed. Please check your inputs.");
+                    // Show error alert on modal
+                    const regErrorAlert = document.getElementById('registerErrorAlert') || document.querySelector('#registerModal .alert-danger');
+                    if (regErrorAlert) {
+                        regErrorAlert.innerText = data.message || "Registration failed.";
+                        regErrorAlert.classList.remove('d-none');
+                    } else {
+                        alert(data.message || "Registration failed.");
+                    }
                 }
             } catch (err) {
                 alert("An error occurred during registration: " + err.message);
