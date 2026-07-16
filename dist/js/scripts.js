@@ -268,11 +268,9 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
-
 $(document).ready(function () {
-    // Target your registration form ID (e.g., #registerForm)
     $('#registerForm').on('submit', function (e) {
-        // Prevent the browser from doing a default page reload/submit
+        // This stops the page from refreshing
         e.preventDefault();
 
         // 1. Serialize all form input values into a key-value format
@@ -284,16 +282,16 @@ $(document).ready(function () {
             alertMessage += field.name + ": " + field.value + "\n";
         });
 
-        // 3. Perform the AJAX request
+        // 3. Immediately show the alert with all details
+        alert(alertMessage);
+
+        // 4. Perform the AJAX request in the background (no refresh)
         $.ajax({
-            url: '/api/register', // Replace this with your actual signup endpoint (e.g., Supabase, PHP, etc.)
+            url: '/api/register', 
             type: 'POST',
-            data: $(this).serialize(), // Send the serialized form data
+            data: $(this).serialize(), 
             success: function (response) {
-                // Display the alert with all submitted details upon click/submit
-                alert(alertMessage);
-                
-                // Optionally: Hide the modal on success and clear form
+                // Optionally: Hide the modal and clear the form after a successful save
                 $('#registerModal').modal('hide');
                 $('#registerForm')[0].reset();
             },
