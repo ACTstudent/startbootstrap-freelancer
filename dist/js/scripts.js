@@ -181,73 +181,39 @@ window.addEventListener('DOMContentLoaded', event => {
         });
     }
 
-    // Handle Register submission
-    const registerForm = document.getElementById('registerForm');
-    const registerErrorAlert = document.getElementById('registerErrorAlert');
-    const registerSuccessAlert = document.getElementById('registerSuccessAlert');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (registerErrorAlert) registerErrorAlert.classList.add('d-none');
-            if (registerSuccessAlert) registerSuccessAlert.classList.add('d-none');
-            
-            const usernameInput = document.getElementById('registerUsername');
-            const emailInput = document.getElementById('registerEmail');
-            const birthdayInput = document.getElementById('registerBirthday');
-            const passwordInput = document.getElementById('registerPassword');
-            
-            const username = usernameInput ? usernameInput.value.trim() : '';
-            const email = emailInput ? emailInput.value.trim() : '';
-            const birthday = birthdayInput ? birthdayInput.value : '';
-            const password = passwordInput ? passwordInput.value.trim() : '';
-            
-            if (!username || !email || !password) {
-                if (registerErrorAlert) {
-                    registerErrorAlert.innerText = "Please fill in all required fields.";
-                    registerErrorAlert.classList.remove('d-none');
-                }
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, birthday, password })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    if (registerSuccessAlert) {
-                        registerSuccessAlert.innerText = data.message || "Registration successful!";
-                        registerSuccessAlert.classList.remove('d-none');
-                    }
-                    registerForm.reset();
-                    
-                    // Automatically redirect to login modal after 1.5 seconds
-                    setTimeout(() => {
-                        const registerEl = document.getElementById('registerModal');
-                        const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
-                        registerModal.hide();
-                        if (registerSuccessAlert) registerSuccessAlert.classList.add('d-none');
-                        
-                        const loginEl = document.getElementById('loginModal');
-                        const loginModal = bootstrap.Modal.getInstance(loginEl) || new bootstrap.Modal(loginEl);
-                        loginModal.show();
-                    }, 1500);
-                } else {
-                    if (registerErrorAlert) {
-                        registerErrorAlert.innerText = data.message || "Registration failed.";
-                        registerErrorAlert.classList.remove('d-none');
-                    }
-                }
-            } catch (err) {
-                if (registerErrorAlert) {
-                    registerErrorAlert.innerText = "An error occurred connecting to the server.";
-                    registerErrorAlert.classList.remove('d-none');
-                }
+    // Handle Register submission (jQuery AJAX Alert Integration)
+    $('#registerForm').off('submit').on('submit', function (e) {
+        e.preventDefault();
+
+        // 1. Serialize input values into key-value pairs
+        var formDataArray = $(this).serializeArray();
+        
+        // 2. Format details to display in the immediate alert box
+        var alertMessage = "Creating Account with the following details:\n\n";
+        $.each(formDataArray, function(i, field) {
+            alertMessage += field.name + ": " + field.value + "\n";
+        });
+
+        // 3. Immediately trigger alert with all input details
+        alert(alertMessage);
+
+        // 4. Fire the AJAX background post request without page reload
+        $.ajax({
+            url: '/api/register', 
+            type: 'POST',
+            data: $(this).serialize(), 
+            success: function (response) {
+                // Hide modal and clear form variables upon successful submission
+                const registerEl = document.getElementById('registerModal');
+                const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
+                registerModal.hide();
+                $('#registerForm')[0].reset();
+            },
+            error: function (xhr, status, error) {
+                alert("An error occurred: " + error);
             }
         });
-    }
+    });
 
     // Handle Logout
     const btnLogout = document.getElementById('btnLogout');
@@ -267,37 +233,4 @@ window.addEventListener('DOMContentLoaded', event => {
         });
     }
 
-});
-$(document).ready(function () {
-    $('#registerForm').on('submit', function (e) {
-        // This stops the page from refreshing
-        e.preventDefault();
-
-        // 1. Serialize all form input values into a key-value format
-        var formDataArray = $(this).serializeArray();
-        
-        // 2. Format the details nicely to show in the alert
-        var alertMessage = "Creating Account with the following details:\n\n";
-        $.each(formDataArray, function(i, field) {
-            alertMessage += field.name + ": " + field.value + "\n";
-        });
-
-        // 3. Immediately show the alert with all details
-        alert(alertMessage);
-
-        // 4. Perform the AJAX request in the background (no refresh)
-        $.ajax({
-            url: '/api/register', 
-            type: 'POST',
-            data: $(this).serialize(), 
-            success: function (response) {
-                // Optionally: Hide the modal and clear the form after a successful save
-                $('#registerModal').modal('hide');
-                $('#registerForm')[0].reset();
-            },
-            error: function (xhr, status, error) {
-                alert("An error occurred: " + error);
-            }
-        });
-    });
 });
