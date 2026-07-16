@@ -1,34 +1,221 @@
-// Handle Register submission (jQuery AJAX Alert Integration)
+Here is the completely updated script.
+
+The alert code is now much more robust. It uses case-insensitive partial matching (e.g., checking if the field name or ID contains "username", "email", or "birthday"). This ensures the alert successfully captures your inputs even if the fields in your HTML use names like `registerUsername`, `emailAddress`, or `birthdayDate`.
+
+```javascript
+/*!
+* Start Bootstrap - Freelancer v7.0.7 (https://startbootstrap.com/theme/freelancer)
+* Copyright 2013-2026 Start Bootstrap
+* Licensed under MIT (https://github.com/StartBootstrap/startbootstrap-freelancer/blob/master/LICENSE)
+*/
+//
+// Scripts
+// 
+
+window.addEventListener('DOMContentLoaded', event => {
+
+    // Navbar shrink function
+    var navbarShrink = function () {
+        const navbarCollapsible = document.body.querySelector('#mainNav');
+        if (!navbarCollapsible) {
+            return;
+        }
+        if (window.scrollY === 0) {
+            navbarCollapsible.classList.remove('navbar-shrink')
+        } else {
+            navbarCollapsible.classList.add('navbar-shrink')
+        }
+    };
+
+    // Shrink the navbar 
+    navbarShrink();
+
+    // Shrink the navbar when page is scrolled
+    document.addEventListener('scroll', navbarShrink);
+
+    // Activate Bootstrap scrollspy on the main nav element
+    const mainNav = document.body.querySelector('#mainNav');
+    if (mainNav) {
+        new bootstrap.ScrollSpy(document.body, {
+            target: '#mainNav',
+            rootMargin: '0px 0px -40%',
+        });
+    };
+
+    // Collapse responsive navbar when toggler is visible
+    const navbarToggler = document.body.querySelector('.navbar-toggler');
+    const responsiveNavItems = [].slice.call(
+        document.querySelectorAll('#navbarResponsive .nav-link')
+    );
+    responsiveNavItems.map(function (responsiveNavItem) {
+        responsiveNavItem.addEventListener('click', () => {
+            if (window.getComputedStyle(navbarToggler).display !== 'none') {
+                navbarToggler.click();
+            }
+        });
+    });
+
+    // --- Authentication & Session Handling ---
+    
+    // Check authentication status on load
+    checkAuth();
+
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/me');
+            const data = await res.json();
+            if (data.loggedIn) {
+                // Show logged in elements, hide logged out elements
+                document.querySelectorAll('.auth-logged-out').forEach(el => el.classList.add('d-none'));
+                document.querySelectorAll('.auth-logged-in').forEach(el => el.classList.remove('d-none'));
+                document.getElementById('navUsername').innerText = data.user.username;
+            } else {
+                // Show logged out elements, hide logged in elements
+                document.querySelectorAll('.auth-logged-out').forEach(el => el.classList.remove('d-none'));
+                document.querySelectorAll('.auth-logged-in').forEach(el => el.classList.add('d-none'));
+            }
+        } catch (err) {
+            console.error("Session check failed:", err);
+        }
+    }
+
+    // Toggle password visibility helper
+    setupPasswordToggle('loginTogglePassword', 'loginPassword');
+    setupPasswordToggle('registerTogglePassword', 'registerPassword');
+
+    function setupPasswordToggle(buttonId, inputId) {
+        const btn = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+        if (btn && input) {
+            btn.addEventListener('click', () => {
+                const type = input.type === 'password' ? 'text' : 'password';
+                input.type = type;
+                const icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                }
+            });
+        }
+    }
+
+    // Inter-modal Navigation
+    const linkToRegister = document.getElementById('linkToRegister');
+    const linkToLogin = document.getElementById('linkToLogin');
+    
+    if (linkToRegister) {
+        linkToRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            const loginEl = document.getElementById('loginModal');
+            let loginModal = bootstrap.Modal.getInstance(loginEl);
+            if (!loginModal) loginModal = new bootstrap.Modal(loginEl);
+            loginModal.hide();
+            
+            const registerEl = document.getElementById('registerModal');
+            let registerModal = bootstrap.Modal.getInstance(registerEl);
+            if (!registerModal) registerModal = new bootstrap.Modal(registerEl);
+            registerModal.show();
+        });
+    }
+    
+    if (linkToLogin) {
+        linkToLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            const registerEl = document.getElementById('registerModal');
+            let registerModal = bootstrap.Modal.getInstance(registerEl);
+            if (!registerModal) registerModal = new bootstrap.Modal(registerEl);
+            registerModal.hide();
+            
+            const loginEl = document.getElementById('loginModal');
+            let loginModal = bootstrap.Modal.getInstance(loginEl);
+            if (!loginModal) loginModal = new bootstrap.Modal(loginEl);
+            loginModal.show();
+        });
+    }
+
+    // Handle Login submission
+    const loginForm = document.getElementById('loginForm');
+    const loginErrorAlert = document.getElementById('loginErrorAlert');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (loginErrorAlert) loginErrorAlert.classList.add('d-none');
+            
+            const usernameInput = document.getElementById('loginUsername');
+            const passwordInput = document.getElementById('loginPassword');
+            const username = usernameInput ? usernameInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value.trim() : '';
+            
+            if (!username || !password) {
+                if (loginErrorAlert) {
+                    loginErrorAlert.innerText = "Please fill in all fields.";
+                    loginErrorAlert.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const loginEl = document.getElementById('loginModal');
+                    const loginModal = bootstrap.Modal.getInstance(loginEl) || new bootstrap.Modal(loginEl);
+                    loginModal.hide();
+                    loginForm.reset();
+                    await checkAuth();
+                } else {
+                    if (loginErrorAlert) {
+                        loginErrorAlert.innerText = data.message || "Invalid credentials.";
+                        loginErrorAlert.classList.remove('d-none');
+                    }
+                }
+            } catch (err) {
+                if (loginErrorAlert) {
+                    loginErrorAlert.innerText = "An error occurred connecting to the server.";
+                    loginErrorAlert.classList.remove('d-none');
+                }
+            }
+        });
+    }
+
+    // Handle Register submission (Robust & Fuzzy Match Alert Integration)
     $('#registerForm').off('submit').on('submit', function (e) {
         e.preventDefault();
 
-        // 1. Serialize input values into key-value pairs
-        var formDataArray = $(this).serializeArray();
-        
-        // 2. Filter to keep only the specific credentials you want to alert
-        var allowedFields = ['username', 'email', 'birthday'];
-        var alertMessage = "Please confirm your credentials:\n\n";
-        
-        $.each(formDataArray, function(i, field) {
-            // Check if the lowercase field name matches one of your target fields
-            var fieldNameLower = field.name.toLowerCase();
-            if (allowedFields.includes(fieldNameLower)) {
-                // Capitalize the first letter of the name for a cleaner display
-                var capitalizedLabel = field.name.charAt(0).toUpperCase() + field.name.slice(1);
-                alertMessage += capitalizedLabel + ": " + field.value + "\n";
-            }
-        });
+        // 1. Look up form field values using flexible, fuzzy matching selectors
+        var usernameVal = $(this).find('input[name*="username" i], input[id*="username" i]').val() || '';
+        var emailVal = $(this).find('input[name*="email" i], input[id*="email" i]').val() || '';
+        var birthdayVal = $(this).find('input[name*="birthday" i], input[id*="birthday" i]').val() || '';
 
-        // 3. Trigger alert with the filtered credential details
+        // 2. If elements are named differently, fall back to searching all serialized fields
+        if (!usernameVal || !emailVal || !birthdayVal) {
+            var formDataArray = $(this).serializeArray();
+            $.each(formDataArray, function(i, field) {
+                var nameLower = field.name.toLowerCase();
+                if (nameLower.includes('username')) usernameVal = field.value;
+                if (nameLower.includes('email')) emailVal = field.value;
+                if (nameLower.includes('birthday')) birthdayVal = field.value;
+            });
+        }
+
+        // 3. Show confirmation alert with details
+        var alertMessage = "Please confirm your credentials:\n\n" +
+                           "Username: " + (usernameVal || "Not entered") + "\n" +
+                           "Email: " + (emailVal || "Not entered") + "\n" +
+                           "Birthday: " + (birthdayVal || "Not entered");
+
         alert(alertMessage);
 
-        // 4. Fire the AJAX background post request without page reload
+        // 4. Fire the AJAX background post request to complete registration
         $.ajax({
             url: '/api/register', 
             type: 'POST',
             data: $(this).serialize(), 
             success: function (response) {
-                // Hide modal and clear form variables upon successful submission
+                // Hide modal and clear the form variables upon successful submission
                 const registerEl = document.getElementById('registerModal');
                 const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
                 registerModal.hide();
@@ -39,3 +226,25 @@
             }
         });
     });
+
+    // Handle Logout
+    const btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    await checkAuth();
+                    window.location.hash = '';
+                }
+            } catch (err) {
+                console.error("Logout failed:", err);
+            }
+        });
+    }
+
+});
+
+```
