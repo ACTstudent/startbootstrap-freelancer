@@ -268,3 +268,38 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
+
+$(document).ready(function () {
+    // Target your registration form ID (e.g., #registerForm)
+    $('#registerForm').on('submit', function (e) {
+        // Prevent the browser from doing a default page reload/submit
+        e.preventDefault();
+
+        // 1. Serialize all form input values into a key-value format
+        var formDataArray = $(this).serializeArray();
+        
+        // 2. Format the details nicely to show in the alert
+        var alertMessage = "Creating Account with the following details:\n\n";
+        $.each(formDataArray, function(i, field) {
+            alertMessage += field.name + ": " + field.value + "\n";
+        });
+
+        // 3. Perform the AJAX request
+        $.ajax({
+            url: '/api/register', // Replace this with your actual signup endpoint (e.g., Supabase, PHP, etc.)
+            type: 'POST',
+            data: $(this).serialize(), // Send the serialized form data
+            success: function (response) {
+                // Display the alert with all submitted details upon click/submit
+                alert(alertMessage);
+                
+                // Optionally: Hide the modal on success and clear form
+                $('#registerModal').modal('hide');
+                $('#registerForm')[0].reset();
+            },
+            error: function (xhr, status, error) {
+                alert("An error occurred: " + error);
+            }
+        });
+    });
+});
