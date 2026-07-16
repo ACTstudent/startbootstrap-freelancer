@@ -1,8 +1,3 @@
-Here is the completely updated script.
-
-The alert code is now much more robust. It uses case-insensitive partial matching (e.g., checking if the field name or ID contains "username", "email", or "birthday"). This ensures the alert successfully captures your inputs even if the fields in your HTML use names like `registerUsername`, `emailAddress`, or `birthdayDate`.
-
-```javascript
 /*!
 * Start Bootstrap - Freelancer v7.0.7 (https://startbootstrap.com/theme/freelancer)
 * Copyright 2013-2026 Start Bootstrap
@@ -181,18 +176,19 @@ window.addEventListener('DOMContentLoaded', event => {
         });
     }
 
-    // Handle Register submission (Robust & Fuzzy Match Alert Integration)
+    // Handle Register submission (Custom In-Website Alert Confirmation)
     $('#registerForm').off('submit').on('submit', function (e) {
         e.preventDefault();
+        var $form = $(this);
 
-        // 1. Look up form field values using flexible, fuzzy matching selectors
-        var usernameVal = $(this).find('input[name*="username" i], input[id*="username" i]').val() || '';
-        var emailVal = $(this).find('input[name*="email" i], input[id*="email" i]').val() || '';
-        var birthdayVal = $(this).find('input[name*="birthday" i], input[id*="birthday" i]').val() || '';
+        // 1. Grab registration credentials from form
+        var usernameVal = $form.find('input[name*="username" i], input[id*="username" i]').val() || '';
+        var emailVal = $form.find('input[name*="email" i], input[id*="email" i]').val() || '';
+        var birthdayVal = $form.find('input[name*="birthday" i], input[id*="birthday" i]').val() || '';
 
-        // 2. If elements are named differently, fall back to searching all serialized fields
+        // Fallback check
         if (!usernameVal || !emailVal || !birthdayVal) {
-            var formDataArray = $(this).serializeArray();
+            var formDataArray = $form.serializeArray();
             $.each(formDataArray, function(i, field) {
                 var nameLower = field.name.toLowerCase();
                 if (nameLower.includes('username')) usernameVal = field.value;
@@ -201,29 +197,92 @@ window.addEventListener('DOMContentLoaded', event => {
             });
         }
 
-        // 3. Show confirmation alert with details
-        var alertMessage = "Please confirm your credentials:\n\n" +
-                           "Username: " + (usernameVal || "Not entered") + "\n" +
-                           "Email: " + (emailVal || "Not entered") + "\n" +
-                           "Birthday: " + (birthdayVal || "Not entered");
+        // 2. Hide the main register modal so they see the custom confirm alert clearly
+        const registerEl = document.getElementById('registerModal');
+        const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
+        registerModal.hide();
 
-        alert(alertMessage);
+        // 3. Create a clean, custom website popup modal on the fly
+        var customModalHtml = `
+            <div class="modal fade" id="customConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="fas fa-user-check me-2"></i> Confirm Your Details</h5>
+                        </div>
+                        <div class="modal-body p-4" id="confirmModalBody">
+                            <p class="text-muted mb-4">Please make sure your details are correct before registering:</p>
+                            <div class="mb-2"><strong>Username:</strong> <span class="text-secondary">${usernameVal}</span></div>
+                            <div class="mb-2"><strong>Email Address:</strong> <span class="text-secondary">${emailVal}</span></div>
+                            <div class="mb-0"><strong>Birthday:</strong> <span class="text-secondary">${birthdayVal}</span></div>
+                        </div>
+                        <div class="modal-footer border-0" id="confirmModalFooter">
+                            <button type="button" class="btn btn-outline-secondary" id="btnCancelConfirm">Edit Details</button>
+                            <button type="button" class="btn btn-primary text-white" id="btnProceedRegister">Confirm & Register</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
 
-        // 4. Fire the AJAX background post request to complete registration
-        $.ajax({
-            url: '/api/register', 
-            type: 'POST',
-            data: $(this).serialize(), 
-            success: function (response) {
-                // Hide modal and clear the form variables upon successful submission
-                const registerEl = document.getElementById('registerModal');
-                const registerModal = bootstrap.Modal.getInstance(registerEl) || new bootstrap.Modal(registerEl);
-                registerModal.hide();
-                $('#registerForm')[0].reset();
-            },
-            error: function (xhr, status, error) {
-                alert("An error occurred: " + error);
-            }
+        // Append custom popup modal to the DOM
+        $('body').append(customModalHtml);
+        var confirmModalEl = document.getElementById('customConfirmModal');
+        var confirmModal = new bootstrap.Modal(confirmModalEl, { backdrop: 'static', keyboard: false });
+        confirmModal.show();
+
+        // If they click "Edit Details", close this and reopen the register modal
+        $('#btnCancelConfirm').on('click', function() {
+            confirmModal.hide();
+            confirmModalEl.remove();
+            registerModal.show();
+        });
+
+        // If they click "Confirm & Register", call the registration API, but keep alert visible
+        $('#btnProceedRegister').on('click', function() {
+            // Disable buttons during submission process
+            $('#btnCancelConfirm, #btnProceedRegister').prop('disabled', true);
+
+            $.ajax({
+                url: '/api/register', 
+                type: 'POST',
+                data: $form.serialize(), 
+                success: function (response) {
+                    // Update the alert popup to show success instead of executing login/automatic redirect
+                    $('#confirmModalBody').html(`
+                        <div class="text-center py-3">
+                            <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                            <h4 class="text-success mb-2">Registration Complete!</h4>
+                            <p class="text-muted">Your account was created successfully. You can now use your credentials to log in.</p>
+                        </div>
+                    `);
+                    
+                    // Change buttons to only offer a manual transition to the login page
+                    $('#confirmModalFooter').html(`
+                        <button type="button" class="btn btn-success text-white w-100" id="btnGoToLogin">Proceed to Login</button>
+                    `);
+
+                    $form[0].reset();
+
+                    // Handle manual login transition button
+                    $('#btnGoToLogin').on('click', function() {
+                        confirmModal.hide();
+                        confirmModalEl.remove();
+                        
+                        // Open the Login modal manually
+                        const loginEl = document.getElementById('loginModal');
+                        const loginModal = bootstrap.Modal.getInstance(loginEl) || new bootstrap.Modal(loginEl);
+                        loginModal.show();
+                    });
+                },
+                error: function (xhr, status, error) {
+                    // On error, let them go back to edit the registration form
+                    confirmModal.hide();
+                    confirmModalEl.remove();
+                    registerModal.show();
+                    alert("An error occurred: " + error);
+                }
+            });
         });
     });
 
@@ -246,5 +305,3 @@ window.addEventListener('DOMContentLoaded', event => {
     }
 
 });
-
-```
